@@ -1,0 +1,105 @@
+OPT_FLAGS = -O3 -ffast-math 
+CXXFLAGS = -Wall -fexceptions $(OPT_FLAGS) -DBYTE_ORDER=LITTLE_ENDIAN -DNEED_BCOPY -DLIBXML_STATIC -DMALLOC_H_NEEDED
+CFLAGS = -Wall $(OPT_FLAGS)
+LDFLAGS = $(OPT_FLAGS)
+
+LIBS = -L$(HOME)/Unix/lib -lxml2 -lm -lwsock32
+OPENGL_LIBS = $(HOME)/Unix/lib/libglui.a $(HOME)/Unix/GLUT/libglut32.a -lGLU32 -lopengl32
+INC_DIRS = -Iode/include -I$(HOME)/Unix/include -I$(HOME)/Unix/include/libxml2
+OPENGL_INC = -I$(HOME)/Unix/GLUT -I/mingw/include/GL/
+
+# vpath %.cpp src ode/src
+# vpath %.c src ode/src
+
+GAITSYMSRC = \
+Body.cpp                DataTarget.cpp          GLUtils.cpp             NamedObject.cpp         TIFFWrite.cpp\
+CappedCylinderGeom.cpp  Geom.cpp                ObjectiveMain.cpp       ThreePointStrap.cpp     FixedJoint.cpp\
+CyclicDriver.cpp        Environment.cpp         HingeJoint.cpp          PlaneGeom.cpp           TwoPointStrap.cpp\
+CylinderWrapStrap.cpp   Face.cpp                Joint.cpp               Simulation.cpp          UGMMuscle.cpp\
+DampedSpringMuscle.cpp  FacetedObject.cpp       MAMuscle.cpp            StepDriver.cpp          SphereGeom.cpp\
+DataFile.cpp            GLUIRoutines.cpp        Muscle.cpp              Strap.cpp               FacetedSphere.cpp\
+FacetedConicSegment.cpp Contact.cpp             MAMuscleExtended.cpp    FloatingHingeJoint.cpp  ErrorHandler.cpp\
+UDP.cpp                 Util.cpp                FacetedPolyline.cpp     NPointStrap.cpp\
+fec.cpp                 TCP.cpp                 BallJoint.cpp
+
+ODECPPSRC = \
+array.cpp                               collision_trimesh_plane.cpp             obstack.cpp\
+box.cpp                                 collision_trimesh_ray.cpp               ode.cpp\
+capsule.cpp                             collision_trimesh_sphere.cpp            odeinit.cpp\
+collision_cylinder_box.cpp              collision_trimesh_trimesh.cpp           odemath.cpp\
+collision_cylinder_plane.cpp            collision_trimesh_trimesh_new.cpp       odeou.cpp\
+collision_cylinder_sphere.cpp           collision_util.cpp                      odetls.cpp\
+collision_cylinder_trimesh.cpp          convex.cpp                              plane.cpp\
+collision_kernel.cpp                    cylinder.cpp                            quickstep.cpp\
+collision_quadtreespace.cpp             error.cpp                               ray.cpp\
+collision_sapspace.cpp                  export-dif.cpp                          rotation.cpp\
+collision_space.cpp                     heightfield.cpp                         sphere.cpp\
+collision_transform.cpp                 joint.cpp                               step.cpp\
+collision_trimesh_box.cpp               lcp.cpp                                 stepfast.cpp\
+collision_trimesh_ccylinder.cpp         mass.cpp                                testing.cpp\
+collision_trimesh_disabled.cpp          mat.cpp                                 timer.cpp\
+collision_trimesh_distance.cpp          matrix.cpp                              util.cpp\
+collision_trimesh_gimpact.cpp           memory.cpp\
+collision_trimesh_opcode.cpp            misc.cpp\
+
+ODECSRC = \
+fastdot.c            fastlsolve.c\
+fastldlt.c           fastltsolve.c
+
+GAITSYMOBJ = $(addsuffix .o, $(basename $(GAITSYMSRC) ) )
+ODECPPOBJ = $(addsuffix .o, $(basename $(ODECPPSRC) ) )
+ODECOBJ = $(addsuffix .o, $(basename $(ODECSRC) ) )
+
+BINARIES = bin/gaitsym bin/gaitsym_opengl 
+
+all: directories binaries 
+
+no_opengl: directories binaries_no_opengl
+
+directories: bin obj 
+
+binaries: $(BINARIES)
+
+binaries_no_opengl: $(BINARIES_NO_OPENGL)
+
+obj: 
+	-mkdir obj
+	-mkdir obj/no_opengl
+	-mkdir obj/opengl
+	-mkdir obj/ode_cpp
+	-mkdir obj/ode_c
+
+bin:
+	-mkdir bin
+	 
+obj/ode_cpp/%.o : ode/src/%.cpp
+	$(CXX) $(CXXFLAGS) $(INC_DIRS)  -c $< -o $@
+
+obj/ode_c/%.o : ode/src/%.c
+	$(CC) $(CFLAGS) $(INC_DIRS)  -c $< -o $@
+
+obj/no_opengl/%.o : src/%.cpp
+	$(CXX) $(CXXFLAGS) $(INC_DIRS)  -c $< -o $@
+
+bin/gaitsym: $(addprefix obj/no_opengl/, $(GAITSYMOBJ) ) $(addprefix obj/ode_cpp/, $(ODECPPOBJ) ) $(addprefix obj/ode_c/, $(ODECOBJ) )
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+obj/opengl/%.o : src/%.cpp
+	$(CXX) -DUSE_OPENGL $(CXXFLAGS) $(INC_DIRS) $(OPENGL_INC)  -c $< -o $@
+
+bin/gaitsym_opengl: $(addprefix obj/opengl/, $(GAITSYMOBJ) ) $(addprefix obj/ode_cpp/, $(ODECPPOBJ) ) $(addprefix obj/ode_c/, $(ODECOBJ) )
+	$(CXX) $(LDFLAGS) -o $@ $^ $(OPENGL_LIBS) $(LIBS) 
+
+clean:
+	rm -rf obj bin
+	rm -f *~ *.bak *.bck *.tmp *.o 
+	rm -f ode/include/config.h ode/src/*~ ode/src/*.bak ode/src/*.bck ode/src/*.tmp ode/src/*.o 
+
+superclean:
+	rm -rf obj bin
+	rm -f *~ *.bak *.bck *.tmp *.o 
+	rm -rf project_builder/build project_builder/GaitSym.pbproj/*.pbxuser
+	find . -name '.DS_Store' -exec rm -f {} \;
+	find . -name '.gdb_history' -exec rm -f {} \;
+	find . -name '.#*' -exec rm -f {} \;
+
